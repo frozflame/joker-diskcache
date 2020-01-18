@@ -1,0 +1,4 @@
+include requirements.txt
+exclude joker-diskcache/test_joker_diskcache/*
+recursive-include joker/diskcache/templates *.html
+
