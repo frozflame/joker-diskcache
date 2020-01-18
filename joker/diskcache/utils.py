@@ -12,7 +12,7 @@ windows_reserved_names = {
 }
 
 
-def windows_filename_safe(s, repl='_'):
+def _windows_filename_safe(s, repl='_'):
     # <>:"/\\|?* and ASCII 0 - 31
     # https://stackoverflow.com/a/31976060/2925169
     ordinals = [ord(c) for c in '<>:"/\\|?*']
@@ -25,8 +25,8 @@ def windows_filename_safe(s, repl='_'):
     return s
 
 
-def proper_filename(s):
-    s = windows_filename_safe(s.strip(), '_')
+def _proper_filename(s):
+    s = _windows_filename_safe(s.strip(), '_')
     # replace leading .-, quotes/spaces with _
     s = re.sub(r'^-', '_', s)
     s = re.sub(r"['\s]+", '_', s)
@@ -43,7 +43,7 @@ def standard_path(dirpath, key, prefixlen=4):
 
 
 def proper_path(dirpath, name, prefixlen=4):
-    name = proper_filename(name)
+    name = _proper_filename(name)
     chksum = hashlib.md5(name.encode('utf-8')).hexdigest()
     key = chksum + '.' + name
     return standard_path(dirpath, key, prefixlen)
