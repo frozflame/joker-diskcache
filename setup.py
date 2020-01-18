@@ -11,7 +11,6 @@ from setuptools import setup, find_packages
 
 _nsp = 'joker'
 _pkg = 'diskcache'
-_desc = ''
 _names = [_nsp, _pkg]
 _names = [s for s in _names if s]
 
@@ -42,9 +41,9 @@ def version_find():
 config = {
     'name': '-'.join(_names),
     'version': version_find(),
-    'description': '' + _desc,
+    'description': 'Primitive disk-backed cache, probably useful in web scraping',
     'keywords': '',
-    'url': 'example.com',
+    'url': 'https://github.com/frozflame/joker-diskcache',
     'author': 'anonym',
     'author_email': 'anonym@example.com',
     'license': "GNU General Public License (GPL)",
@@ -54,8 +53,6 @@ config = {
     # 'entry_points': {'console_scripts': ['diskcache=joker.diskcache.main:run']},
     'classifiers': [
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.0',
         'Programming Language :: Python :: 3.1',
@@ -67,8 +64,8 @@ config = {
     ],
     # ensure copy static file to runtime directory
     'include_package_data': True,
-    # 'long_description': read('README.md'),
-    # 'long_description_content_type': "text/markdown",
+    'long_description': read('README.md'),
+    'long_description_content_type': "text/markdown",
 }
 
 if _nsp:
