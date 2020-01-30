@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 class CachedResponse(object):
     __slots__ = ['content', 'httpmeta']
 
+    ok = True
     status_code = 200
     reason = 'Cached'
     fields = ['status_code', 'reason', 'encoding', 'url']
@@ -100,6 +101,10 @@ class HTTPClient(object):
             return
         time.sleep(time.time() % maxsec)
 
+    @staticmethod
+    def ok(response):
+        return response.ok
+
     def request(self, url, **kwargs):
         if not url:
             self.sess.headers.pop('Referer', 0)
@@ -110,7 +115,9 @@ class HTTPClient(object):
             logger.debug('cache miss: %s', url)
             kwargs.setdefault('method', 'get')
             resp = self.sess.request(url=url, **kwargs)
-            self.cache.save(key, resp)
+            # do not save responses like 404, 500, etc.
+            if self.ok(resp):
+                self.cache.save(key, resp)
         self.sess.headers['Referer'] = url
         return resp
 
