@@ -1,0 +1,3 @@
+### 0.3:
+* add HTTPCache and HTTPClient
+* merge j.dc.generic and j.dc.simple into j.dc.base

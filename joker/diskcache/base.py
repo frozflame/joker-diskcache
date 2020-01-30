@@ -8,6 +8,7 @@ import os
 import shutil
 import threading
 import time
+import traceback
 
 from joker.diskcache import utils
 
@@ -34,6 +35,40 @@ class Tmpfile(object):
         name = '{}_{}_{}.tmp'.format(*tup)
         self.path = os.path.join(dirpath, name)
         os.makedirs(dirpath, exist_ok=True)
+
+
+class SimpleDiskCache(object):
+    def __init__(self, dirpath, prefixlen=4):
+        os.makedirs(dirpath, exist_ok=True)
+        self.dirpath = dirpath
+        self.prefixlen = prefixlen
+
+    def get_path(self, key):
+        return utils.proper_path(self.dirpath, key, self.prefixlen)
+
+    def load(self, key):
+        path = self.get_path(key)
+        if not os.path.exists(path):
+            return
+        logger.debug('use cached: ' + path)
+        try:
+            content = open(path).read()
+            hb = content[-16:]
+            content = content[:-16]
+            if hashlib.md5(content).digest() == hb:
+                return content
+            logger.debug('md5 hash mismatch')
+        except IOError:
+            traceback.print_exc()
+
+    def save(self, key, content):
+        path = self.get_path(key)
+        logger.debug('save to cache: ' + path)
+        hb = hashlib.md5(content).digest()
+        with open(path, 'wb') as fout:
+            fout.write(content)
+            fout.write(hb)
+        return content
 
 
 class ContentAddressedStorage(object):
@@ -94,31 +129,44 @@ class DiskCache(object):
 
     def delete(self, key):
         cas = self.cas
-        info_path = self.get_path(key)
-        if not os.path.isfile(info_path):
-            logger.debug('not a file: %s', info_path)
+        meta_path = self.get_path(key)
+        if not os.path.isfile(meta_path):
+            logger.debug('not a file: %s', meta_path)
             return
-        info = json.load(open(info_path))
-        os.remove(info_path)
-        cas.delete(info['cas_key'])
+        meta = json.load(open(meta_path))
+        os.remove(meta_path)
+        cas.delete(meta['cas_key'])
 
-    def load(self, key, check=False):
+    def _load(self, key, check):
         cas = self.cas
-        info_path = self.get_path(key)
-        if not os.path.isfile(info_path):
-            logger.debug('not a file: %s', info_path)
+        meta_path = self.get_path(key)
+        if not os.path.isfile(meta_path):
+            logger.debug('not a file: %s', meta_path)
             return
-        info = json.load(open(info_path))
-        cas_key = info['cas_key']
+        meta = json.load(open(meta_path))
+        cas_key = meta['cas_key']
         content = bytes().join(cas.load(cas_key))
         if check and not cas.integrity_check(cas_key, [content]):
             raise IntegrityError('checksum mismatch: ' + key)
-        return utils.decompress(content, info['compression'])
+        return meta, utils.decompress(content, meta['compression'])
+
+    def load(self, key, check=False):
+        meta_and_content = self._load(key, check)
+        if meta_and_content:
+            return meta_and_content[1]
 
     def pop(self, key, check=False):
-        content = self.load(key, check=check)
+        rv = self.load(key, check=check)
         self.delete(key)
-        return content
+        return rv
+
+    def _save(self, key, meta, content, compression):
+        content, compression = utils.compress(content, compression)
+        cas_key = self.cas.save([content])
+        meta.update({"cas_key": cas_key, "compression": compression})
+        path = self.get_path(key)
+        with open(path, 'w') as fout:
+            json.dump(meta, fout)
 
     def save(self, key, content, compression=None):
         """
@@ -126,9 +174,4 @@ class DiskCache(object):
         :param content: (bytes)
         :param compression: None or 'gzip'
         """
-        content, compression = utils.compress(content, compression)
-        cas_key = self.cas.save([content])
-        info = {"cas_key": cas_key, "compression": compression}
-        path = self.get_path(key)
-        with open(path, 'w') as fout:
-            json.dump(info, fout)
+        self._save(key, {}, content, compression)
