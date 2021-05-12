@@ -1,3 +1,3 @@
-__version__ = '0.3'
+__version__ = '0.4'
 
-from joker.diskcache.base import DiskCache
+from joker.diskcache.core import DiskCache, ContentAddressedStorage

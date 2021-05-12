@@ -5,7 +5,7 @@ import logging
 import time
 
 import requests
-from joker.diskcache.base import DiskCache
+from joker.diskcache.core import DiskCache
 
 
 logger = logging.getLogger(__name__)

@@ -5,6 +5,7 @@ import hashlib
 import json
 import logging
 import os
+import pickle
 import shutil
 import threading
 import time
@@ -19,6 +20,11 @@ class IntegrityError(ValueError):
     pass
 
 
+def gen_tmp_affix():
+    tup = os.getpid(), threading.get_ident(), time.time()
+    return '_{}_{}_{}.tmp'.format(*tup)
+
+
 class Tmpfile(object):
     def __enter__(self):
         return self
@@ -31,9 +37,7 @@ class Tmpfile(object):
 
     def __init__(self, *paths):
         dirpath = os.path.join(*paths)
-        tup = os.getpid(), threading.get_ident(), time.time()
-        name = '{}_{}_{}.tmp'.format(*tup)
-        self.path = os.path.join(dirpath, name)
+        self.path = os.path.join(dirpath, gen_tmp_affix())
         os.makedirs(dirpath, exist_ok=True)
 
 
@@ -46,13 +50,16 @@ class SimpleDiskCache(object):
     def get_path(self, key):
         return utils.proper_path(self.dirpath, key, self.prefixlen)
 
+    def get_tmp_path(self, key):
+        return self.get_path(key) + gen_tmp_affix()
+
     def load(self, key):
         path = self.get_path(key)
         if not os.path.exists(path):
             return
         logger.debug('use cached: ' + path)
         try:
-            content = open(path).read()
+            content = open(path, 'rb').read()
             hb = content[-16:]
             content = content[:-16]
             if hashlib.md5(content).digest() == hb:
@@ -65,10 +72,11 @@ class SimpleDiskCache(object):
         path = self.get_path(key)
         logger.debug('save to cache: ' + path)
         hb = hashlib.md5(content).digest()
-        with open(path, 'wb') as fout:
+        tmp_path = self.get_tmp_path(key)
+        with open(tmp_path, 'wb') as fout:
             fout.write(content)
             fout.write(hb)
-        return content
+        shutil.move(tmp_path, path)
 
 
 class ContentAddressedStorage(object):
@@ -175,3 +183,17 @@ class DiskCache(object):
         :param compression: None or 'gzip'
         """
         self._save(key, {}, content, compression)
+
+
+# TODO: pickle or marshal?
+class PickledDiskCache(DiskCache):
+    def save(self, key, obj, compression=None):
+        if obj is None:
+            return
+        content = pickle.dumps(obj)
+        self._save(key, {}, content, compression)
+
+    def load(self, key, check=False):
+        content = DiskCache.load(self, key, check)
+        if content:
+            return pickle.loads(content)

@@ -4,7 +4,7 @@
 import os
 import re
 
-from setuptools import setup, find_packages
+import setuptools
 
 # CAUTION:
 # Do NOT import your package from your setup.py
@@ -47,17 +47,13 @@ config = {
     'author': 'anonym',
     'author_email': 'anonym@example.com',
     'license': "GNU General Public License (GPL)",
-    'packages': find_packages(exclude=['test_*']),
+    'packages': setuptools.find_namespace_packages(exclude=['test_*']),
     'zip_safe': False,
     'install_requires': read("requirements.txt"),
     # 'entry_points': {'console_scripts': ['diskcache=joker.diskcache.main:run']},
     'classifiers': [
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.0',
-        'Programming Language :: Python :: 3.1',
-        'Programming Language :: Python :: 3.2',
-        'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
@@ -72,6 +68,6 @@ if _nsp:
     config['namespace_packages'] = [_nsp]
 
 
-setup(**config)
+setuptools.setup(**config)
 
 
